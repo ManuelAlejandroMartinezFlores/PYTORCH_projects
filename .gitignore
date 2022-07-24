@@ -135,3 +135,6 @@ dmypy.json
 **/runs
 
 **/models
+
+
+**/lightning_logs
