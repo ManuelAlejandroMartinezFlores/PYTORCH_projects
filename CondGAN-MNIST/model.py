@@ -16,34 +16,36 @@ test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size,
 class CondGeneratorMNIST(nn.Module):
     def __init__(self, input_size=110):
         super(CondGeneratorMNIST, self).__init__()
-        self.c1 = nn.ConvTranspose2d(input_size, 64, 6)                 # (1 - 1)2 + 6 = 6
+        self.c1 = nn.ConvTranspose2d(input_size, 64, 6)                 # (1 - 1)1 + 6 = 6
         self.c2 = nn.ConvTranspose2d(64, 16, 3, stride=2)               # (6 - 1)2 + 3 = 13
         self.c3 = nn.ConvTranspose2d(16, 1, 4, stride=2)                # (13 - 1)2 + 4 = 28
+        self.bn = nn.BatchNorm2d(16)
+
         
     def forward(self, x):
         x = F.relu(self.c1(x))
         x = F.relu(self.c2(x))
+        x = self.bn(x)
         x = torch.sigmoid(self.c3(x))
         return x 
     
 class CondCriticMNIST(nn.Module):
     def __init__(self): 
         super(CondCriticMNIST, self).__init__()                         # (I + 2P - K) / S + 1
-        self.c1 = nn.Conv2d(11, 8, 4, stride=2)                          # (28 - 4) / 2 + 1 = 13
-        self.c2 = nn.Conv2d(8, 32, 3, stride=2)                         # (13 - 3) / 2 + 1 = 6
+        self.c1 = nn.Conv2d(11, 16, 4, stride=2)                          # (28 - 4) / 2 + 1 = 13
+        self.c2 = nn.Conv2d(16, 32, 3, stride=2)                         # (13 - 3) / 2 + 1 = 6
+        self.bn = nn.BatchNorm2d(32)
         self.c3 = nn.Conv2d(32, 64, 6)                                  
         self.flatten = nn.Flatten(start_dim=1)
-        self.fc = nn.Linear(64, 16)
-        self.fc2 = nn.Linear(16, 1) 
+        self.fc = nn.Linear(64, 1)
         
     def forward(self, x):
         x = F.relu(self.c1(x))
         x = F.relu(self.c2(x))
+        x = self.bn(x)
         x = F.relu(self.c3(x))
         x = self.flatten(x)
-        x = F.relu(self.fc(x))
-        x = self.fc2(x)
-        return x  
+        return self.fc(x)
 
 
 if __name__ == '__main__':
