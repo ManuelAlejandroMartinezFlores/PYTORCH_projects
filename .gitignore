@@ -144,3 +144,5 @@ dmypy.json
 **.mp4
 
 **/imgs
+
+**/.vector_cache
