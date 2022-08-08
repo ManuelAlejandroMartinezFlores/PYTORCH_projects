@@ -33,6 +33,7 @@ class Seq2SeqDecoder(nn.Module):
         
     def forward(self, x, h, c):
         x = GLOVE.get_vecs_by_tokens(x).view(1, -1)
+        x = F.relu(x)
         out, (h, c) = self.lstm(x, (h, c))
         y = self.fc(out[-1,:])
         y = F.log_softmax(y, dim=0)
