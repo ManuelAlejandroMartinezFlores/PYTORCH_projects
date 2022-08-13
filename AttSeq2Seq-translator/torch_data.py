@@ -37,7 +37,7 @@ def iterate_dataloader():
     for x, y in DATALOADER:
         x = [sp.sentence2ids(s) + [1] for s in x]
         y = [en.sentence2ids(s) + [1] for s in y]
-        yield x, y 
+        yield x, y
         
         
 def ids_to_sentence(ids, lang):
