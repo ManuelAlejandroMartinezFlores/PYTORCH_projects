@@ -89,6 +89,14 @@ class Lang:
                 self.word2id[w] = self.n_words
                 self.id2word[self.n_words] = w
                 self.n_words += 1
+                
+    def to_include(self, s):
+        flag = True 
+        for w in s.split(' '):
+            if w not in self.word2id:
+                flag = False 
+                break 
+        return flag
             
         
     def save(self):
@@ -100,6 +108,11 @@ class Lang:
         }
         torch.save(DATA, f'data/{self.lang}.pth')
             
+            
+            
+ENG_PREFIX = [
+    'i am', 'you are', 'he is', 'she is', 'they are'
+]
         
 
 if __name__ == '__main__':
@@ -116,14 +129,35 @@ if __name__ == '__main__':
             clean_sp = clean_text(line[1])
             tok_sp = tokenize(clean_sp)
             
-            if len(tok_sp) > 15 or len(tok_en) > 15:
+            include = False
+            for prefix in ENG_PREFIX:
+                if clean_en.startswith(prefix):
+                    include = True
+            
+            if len(tok_sp) > 10 or len(tok_en) > 10 or not include:
                 continue 
+                    
+            
             en.add_sentences(clean_en, tok_en) 
             sp.add_sentences(clean_sp, tok_sp)
             
             
     en._conclude()
     sp._conclude()
+    
+    
+    new_ss = []
+    new_se = []
+    for ss, se in zip(sp.sentences, en.sentences):
+        if sp.to_include(ss) and en.to_include(se):
+            new_ss.append(ss)
+            new_se.append(se)
+            
+    assert len(new_se) == len(new_ss)
+    print(len(new_se))
+    en.sentences = new_se 
+    sp.sentences = new_ss
+    
     en.save()
     sp.save()
     
