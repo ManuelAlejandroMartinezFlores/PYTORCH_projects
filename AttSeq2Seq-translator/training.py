@@ -10,8 +10,11 @@ import random
 
 from torch_data import ids_to_sentence, iterate_dataloader
 from model import Seq2SeqEncoder, AttSeq2SeqDecoder
+from evaluation import evaluate
 
-LR = 2e-3
+LR = 2e-4
+
+MAX_LEN = 11
 
 encoder = Seq2SeqEncoder()
 decoder = AttSeq2SeqDecoder()
@@ -24,8 +27,8 @@ dec_sch = StepLR(dec_optim, step_size=100, gamma=0.97)
 
 criteria = nn.NLLLoss()
 
-TEACHER_RATIO = 0.9 
-TEACHER_GAMMA = 0.97
+TEACHER_RATIO = 0.7
+TEACHER_GAMMA = 0.9
 
 def load_model():
     try:
@@ -37,7 +40,7 @@ def load_model():
         TEACHER_RATIO = data['teacher_ratio']
         return data['epoch'], TEACHER_RATIO
     except:
-        return 0, 0.95
+        return 0, 0.5
     
     
 def train(epochs, init_epoch=0, TEACHER_RATIO=0.9):
@@ -53,6 +56,7 @@ def train(epochs, init_epoch=0, TEACHER_RATIO=0.9):
             show_pred = []
             for x, y in zip(inputs, outputs):
                 enc_out, h, c = encoder(torch.tensor(x, dtype=torch.long))
+                enc_out = torch.cat([enc_out, torch.zeros(MAX_LEN - enc_out.size(0), 256)])
                 
                 teacher_force = random.random() < teacher_ratio
                 pred = []
@@ -62,7 +66,7 @@ def train(epochs, init_epoch=0, TEACHER_RATIO=0.9):
                     out, h, c = decoder(torch.tensor([inputw], dtype=torch.long), h, c, enc_out)
                     
                     inputw = torch.argmax(out, dim=1).detach().item()
-                    loss += criteria(out, torch.tensor([w], dtype=torch.long))
+                    loss += criteria(out, torch.tensor([w], dtype=torch.long)) / len(y)
                     
                     if k % 50 == 0: pred.append(inputw)
                     
@@ -77,6 +81,7 @@ def train(epochs, init_epoch=0, TEACHER_RATIO=0.9):
                         
             enc_optim.zero_grad()
             dec_optim.zero_grad()
+            loss = loss / 32
             loss.backward()
             dec_optim.step()
             enc_optim.step()
@@ -94,7 +99,7 @@ def train(epochs, init_epoch=0, TEACHER_RATIO=0.9):
                     'epoch': epoch+1
                 }
                 torch.save(data, 'models/AttSeq2Seq.pth')
-                teacher_ratio = max(TEACHER_GAMMA * teacher_ratio, 0.4)
+                teacher_ratio = max(TEACHER_GAMMA * teacher_ratio, 0.5)
                 
                 for i, o, p in zip(show_sp[:4], show_en[:4], show_pred[:4]):
                     print('-----------------------------------')
@@ -102,9 +107,11 @@ def train(epochs, init_epoch=0, TEACHER_RATIO=0.9):
                     print(f'predicted: {p}')
                     print(f'output: {o}')
                 
+                with torch.no_grad():
+                    evaluate(encoder, decoder, f'imgs/epoch{epoch+1:03d}.png')
             
             
 if __name__ == '__main__':
     epoch, TEACHER_RATIO = load_model()
-    # train(200, epoch, TEACHER_RATIO)
-    train(200, epoch)
+    train(50, epoch, TEACHER_RATIO)
+    # train(200, epoch)
