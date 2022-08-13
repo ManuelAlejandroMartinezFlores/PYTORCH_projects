@@ -7,10 +7,10 @@ import random
 
 from torch_data import N, iterate_dataloader
 
-MAX_LEN = 16
+MAX_LEN = 11
 
 class Seq2SeqEncoder(nn.Module):
-    def __init__(self, input_size=N['sp'], hidden_size=256, num_layers=3):
+    def __init__(self, input_size=N['sp'], hidden_size=256, num_layers=1):
         super(Seq2SeqEncoder, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -21,11 +21,14 @@ class Seq2SeqEncoder(nn.Module):
         x = self.embed(x)
         out, (h, c) = self.lstm(x)
         return out, h, c 
+    
+    def evaluate(self, x):
+        return self.forward(x)
         
     
     
 class AttSeq2SeqDecoder(nn.Module):
-    def __init__(self, input_size=N['en'], hidden_size=256, num_layers=3, output_size=N['en'], dropout_p=0.4):
+    def __init__(self, input_size=N['en'], hidden_size=256, num_layers=1, output_size=N['en'], dropout_p=0.1):
         super(AttSeq2SeqDecoder, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers 
@@ -45,6 +48,24 @@ class AttSeq2SeqDecoder(nn.Module):
         
         attn = torch.cat([h[-1], c[-1], embed[0]], dim=0).view(1, -1)
         att_w = self.attn(attn)
+        att_w = torch.softmax(att_w, dim=1)
+        
+        attn_app = torch.matmul(att_w, enc_out)
+        attn_app = torch.cat([attn_app, embed], dim=1)
+        attn_comb = F.relu(self.attn_comb(attn_app))
+        
+        out, (h, c) = self.lstm(attn_comb, (h, c))
+        y = self.fc(out)
+        y = torch.log_softmax(y, dim=1)
+        return y, h, c 
+    
+    def evaluate(self, x, h, c, enc_out):
+        x = self.embed(x)
+        embed = self.dropout(x)
+        
+        attn = torch.cat([h[-1], c[-1], embed[0]], dim=0).view(1, -1)
+        att_w = self.attn(attn)
+        att_w = torch.softmax(att_w, dim=1)
         
         attn_app = torch.matmul(att_w[:, :enc_out.size(0)], enc_out)
         attn_app = torch.cat([attn_app, embed], dim=1)
@@ -53,7 +74,7 @@ class AttSeq2SeqDecoder(nn.Module):
         out, (h, c) = self.lstm(attn_comb, (h, c))
         y = self.fc(out)
         y = torch.log_softmax(y, dim=1)
-        return y, h, c 
+        return y, h, c, att_w
         
     
     
@@ -67,7 +88,8 @@ if __name__ == '__main__':
         since = time()
         for x, y in zip(inputs, outputs):
             enc_out, h, c = enc(torch.tensor(x, dtype=torch.long))
-            print(len(x), enc_out.shape, h.shape, c.shape)
+            enc_out = torch.cat([enc_out, torch.zeros(MAX_LEN - enc_out.size(0), 256)])
+            print(enc_out.shape)
             
             teacher_force = random.random() < teacher_ratio
             
