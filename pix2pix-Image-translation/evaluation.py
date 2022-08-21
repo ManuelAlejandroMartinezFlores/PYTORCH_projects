@@ -55,13 +55,5 @@ def evaluation_test(filename):
     
     
 if __name__ == '__main__':
-    from torch_data import TESTLOADER
-    
-    segmentations, photos = iter(TESTLOADER).next()
-    
-    model = load()
-    with torch.no_grad():
-        model.eval()
-        predictions = model(segmentations)
-        
-        visualize_result(segmentations, photos, predictions, 'imgs/ev.png')
+    for k in range(1, 6):
+        evaluation_test(f'imgs/ev{k:02d}.png')
