@@ -5,6 +5,7 @@ import torch
 from time import time
 
 from model import EncoderDecoder, Discriminator, gradient_penalty
+from model_unet import UNet
 from torch_data import TRAINLOADER
 from evaluation import visualize_result, evaluation_test
 
@@ -17,11 +18,11 @@ def save(generator, discriminator, gen_optim, disc_optim, epoch):
         'disc_optim': disc_optim.state_dict(),
         'epoch': epoch
     }
-    torch.save(data, 'models/pix2pix.pth')
+    torch.save(data, 'models/pix2pix-unet.pth')
     
 def load(generator, discriminator, gen_optim, disc_optim):
     try:
-        data = torch.load('models/pix2pix.pth')
+        data = torch.load('models/pix2pix-unet.pth')
         generator.load_state_dict(data['generator'])
         discriminator.load_state_dict(data['discriminator'])
         gen_optim.load_state_dict(data['gen_optim'])
@@ -34,7 +35,7 @@ def load(generator, discriminator, gen_optim, disc_optim):
     
     
 def train(epochs, lr=2e-4):
-    generator = EncoderDecoder()
+    generator = UNet()
     discriminator = Discriminator()
     gen_optim = Adam(generator.parameters(), lr=lr)
     disc_optim = Adam(discriminator.parameters(), lr=lr)
@@ -52,7 +53,8 @@ def train(epochs, lr=2e-4):
         epoch_l1_loss = 0
         epoch_gp = 0
         since = time()
-        for segmentation, photos in TRAINLOADER:
+
+        for k, (segmentation, photos) in enumerate(TRAINLOADER):
             
             # gen loss: -D(G(z)) + L * MAE
             Gz = generator(segmentation)
@@ -62,31 +64,36 @@ def train(epochs, lr=2e-4):
             
             l1_loss = 100 * l1_mae(Gz, photos)
             
-            total_loss = gen_loss + l1_loss
+            g_total_loss = gen_loss + l1_loss
             
             gen_optim.zero_grad()
-            total_loss.backward()
-            gen_optim.step()
+            g_total_loss.backward(retain_graph=True)
             
+
+            
+            
+            disc_loss = torch.zeros(1)
+            gp = torch.zeros(1)
             # disc loss: D(G(z)) - D(y) + gp 
-            
-            Gz = generator(segmentation)
-            DGz = discriminator(Gz, segmentation)
+            Gz_ = Gz.detach().requires_grad_(True)
+            DGz = discriminator(Gz_, segmentation)
             Dx = discriminator(photos, segmentation)
             disc_loss = gan_loss(DGz, torch.zeros_like(DGz)) + gan_loss(Dx, torch.ones_like(Dx))
-            # gp = 12 * gradient_penalty(discriminator, photos, Gz, segmentation)
+            gp = 10 * gradient_penalty(discriminator, photos, Gz, segmentation)
             
-            # total_loss = disc_loss + gp 
-            total_loss = disc_loss
+            d_total_loss = disc_loss + gp 
+            # total_loss = disc_loss
+            
             
             disc_optim.zero_grad()
-            total_loss.backward()
+            d_total_loss.backward()
             disc_optim.step()
+            gen_optim.step()
             
             epoch_loss_disc += disc_loss.item()
             epoch_loss_gen += gen_loss.item()
             epoch_l1_loss += l1_loss.item()
-            # epoch_gp += gp.item()
+            epoch_gp += gp.item()
             
             
         
@@ -101,8 +108,8 @@ def train(epochs, lr=2e-4):
         print(f'epoch: {epoch+1:4d}, time: {time()-since:.2f}, gen loss: {epoch_loss_gen:.4f}, disc loss: {epoch_loss_disc:.4f}, l1 loss: {epoch_l1_loss:.4f}, gp: {epoch_gp:.4f}')
         save(generator, discriminator, gen_optim, disc_optim, epoch+1)
         
-        if epoch % 10 == 9:
-            evaluation_test(f'imgs/epoch{epoch+1:04d}.png')
+        if epoch % 5 == 4:
+            evaluation_test(f'imgs-unet/epoch{epoch+1:04d}.png')
             
         
         
