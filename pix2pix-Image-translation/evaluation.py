@@ -3,14 +3,15 @@ from torchvision.transforms import ToPILImage
 import matplotlib.pyplot as plt
 
 from model import EncoderDecoder
+from model_unet import UNet
 
-from torch_data import TESTLOADER
+from torch_data import TESTLOADER, TRAINLOADER
 
 
 def load():
-    model = EncoderDecoder()
+    model = UNet()
     try:
-        data = torch.load('models/pix2pix.pth')
+        data = torch.load('models/pix2pix-unet.pth')
         model.load_state_dict(data['generator'])
         return model 
     except:
@@ -56,4 +57,4 @@ def evaluation_test(filename):
     
 if __name__ == '__main__':
     for k in range(1, 6):
-        evaluation_test(f'imgs/ev{k:02d}.png')
+        evaluation_test(f'imgs-unet/ev{k:02d}.png')
