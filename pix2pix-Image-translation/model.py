@@ -118,7 +118,7 @@ def gradient_penalty(D, real_samples:torch.Tensor, fake_samples:torch.Tensor, ta
     inter = (alphas * real_samples + (1 - alphas) * fake_samples).requires_grad_(True)
 
     d_inter = D(inter, target)
-    fake = torch.autograd.Variable(torch.FloatTensor(real_samples.shape[0], 1).fill_(1.0), requires_grad=False)
+    fake = torch.autograd.Variable(torch.FloatTensor(real_samples.shape[0], 1, 12, 12).fill_(1.0), requires_grad=False)
     gradients = torch.autograd.grad(
         outputs=d_inter,
         inputs=inter,
