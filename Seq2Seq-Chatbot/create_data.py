@@ -47,7 +47,7 @@ def padding(tokenized_sentence:list, max_len:int, pad:str):
     tokenized_sentence = (max_len - len(tokenized_sentence)) * [pad] + tokenized_sentence
     return tokenized_sentence
 
-MAX_LEN = 15
+MAX_LEN = 10
 
 def reduce_len(sentence, max_len=MAX_LEN):
     if len(sentence) > MAX_LEN:
@@ -99,16 +99,31 @@ if __name__ == '__main__':
             break
         
     cnt = 0
-    
-    ORD_DICT = []   
+      
     for w in WORDS_FREQ:
-        if WORDS_FREQ[w] > 2:
+        if WORDS_FREQ[w] > 5:
             WORDS_TO_ID[w] = cnt
             ID_TO_WORDS[cnt] = w 
             cnt += 1
         
-
-
+    new_x = []
+    new_y = []
+    
+    for x, y in zip(DATA['x'], DATA['y']):
+        flag = True
+        for w in x.split(' '):
+            if w not in WORDS_TO_ID:
+                flag = False 
+        for w in y.split(' '):
+            if w not in WORDS_TO_ID:
+                flag = False 
+                
+        if flag:
+            new_x.append(x)
+            new_y.append(y)
+        
+    DATA['x'] = new_x 
+    DATA['y'] = new_y
 
     DATA['words_to_id'] = WORDS_TO_ID
     DATA['id_to_words'] = ID_TO_WORDS

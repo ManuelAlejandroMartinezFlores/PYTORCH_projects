@@ -10,7 +10,7 @@ from model import Seq2SeqDecoder, Seq2SeqEncoder
 
 
 
-LR = 5e-3
+LR = 1e-4
 TEACHER_RATIO = 0.9
 
 encoder = Seq2SeqEncoder()
@@ -70,7 +70,7 @@ def train(epochs, init_epoch=0, TEACHER_RATIO=0.95):
                     if teacher_force:
                         inputw = w 
                     
-                    loss += criteria(out.view(1, -1), torch.tensor([WORDS_TO_ID[w]], dtype=torch.long)) / 32
+                    loss += criteria(out.view(1, -1), torch.tensor([WORDS_TO_ID[w]], dtype=torch.long)) / len(y)
                         
                 if k % 200 == 0:
                     show_ins.append(' '.join(x))
@@ -79,6 +79,7 @@ def train(epochs, init_epoch=0, TEACHER_RATIO=0.95):
                     
             dec_optim.zero_grad()
             enc_optim.zero_grad()
+            loss = loss / 32
             loss.backward()
             dec_optim.step()
             enc_optim.step()
