@@ -20,7 +20,7 @@ def load():
     encoder = Encoder()
     decoder = Decoder()
     try:
-        data = torch.load('models/CNN-RNN-ImgCapt')
+        data = torch.load('models/CNN-RNN-ImgCapt.pth')
         encoder.load_state_dict(data['encoder'])
         decoder.load_state_dict(data['decoder'])
     except:
@@ -43,13 +43,13 @@ def evaluate(filename):
         plt.axis('off')
         
         img = alex_trans(image).view(1, 3, 224, 224)
-        out = encoder(img).view(6, -1)
-        h, c = out[3:], out[:3]
+        img_out = encoder(img)
+        h, c = decoder.init_hidden()
         
         pred = []
         inputw = 0
         for w in sentence2id(caption) + [1]:
-            out, h, c = decoder(torch.tensor([inputw]), h, c)
+            out, h, c = decoder(torch.tensor([inputw]), h, c, img_out)
             inputw = torch.argmax(out, dim=1).item()
             pred.append(ID2WORDS[inputw])
             
@@ -60,9 +60,11 @@ def evaluate(filename):
         
     plt.tight_layout(pad=3)
     plt.savefig(filename)
+    plt.close()
     
     
 if __name__ == '__main__':
-    evaluate('imgs/ev.png')
+    for k in range(1, 6):
+        evaluate(f'imgs/ev{k:02d}.png')
         
     
