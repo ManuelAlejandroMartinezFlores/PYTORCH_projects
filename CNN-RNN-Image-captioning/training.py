@@ -104,7 +104,7 @@ def train(epochs, lr=1e-4, teacher_ratio=0.9, teacher_lambda=0.98):
             enc_sch.step()
             dec_sch.step()
         
-        if epoch % 10 == 9:
+        if epoch % 20 == 19:
             evaluate(f'imgs/epoch{epoch+1:04d}.png')
         
         
